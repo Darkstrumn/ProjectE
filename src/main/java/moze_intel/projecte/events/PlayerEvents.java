@@ -101,9 +101,9 @@ public class PlayerEvents
 
 		player.getCapability(ProjectEAPI.ALCH_BAG_CAPABILITY, null).sync(null, player);
 
-		PacketHandler.sendTo(new SyncCovalencePKT(ProjectEConfig.difficulty.covalenceLoss), player);
+		PacketHandler.sendTo(new SyncCovalencePKT(ProjectEConfig.difficulty.covalenceLoss, ProjectEConfig.difficulty.covalenceLossRounding), player);
 
-		PECore.LOGGER.info("Sent knowledge and bag data to {}", player.getName());
+		PECore.debugLog("Sent knowledge and bag data to {}", player.getName());
 	}
 
 	@SubscribeEvent

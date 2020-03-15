@@ -126,15 +126,15 @@ public final class PlayerHelper
 		// Thank you ForgeEssentials
 		Vec3d look = player.getLook(1.0F);
 		Vec3d playerPos = new Vec3d(player.posX, player.posY + (player.getEyeHeight() - player.getDefaultEyeHeight()), player.posZ);
-		Vec3d src = playerPos.addVector(0, player.getEyeHeight(), 0);
-		Vec3d dest = src.addVector(look.x * maxDistance, look.y * maxDistance, look.z * maxDistance);
+		Vec3d src = playerPos.add(0, player.getEyeHeight(), 0);
+		Vec3d dest = src.add(look.x * maxDistance, look.y * maxDistance, look.z * maxDistance);
 		return ImmutablePair.of(src, dest);
 	}
 
 	public static boolean hasBreakPermission(EntityPlayerMP player, BlockPos pos)
 	{
 		return hasEditPermission(player, pos)
-				&& !(ForgeHooks.onBlockBreakEvent(player.getEntityWorld(), player.interactionManager.getGameType(), player, pos) == -1);
+				&& ForgeHooks.onBlockBreakEvent(player.getEntityWorld(), player.interactionManager.getGameType(), player, pos) != -1;
 	}
 
 	public static boolean hasEditPermission(EntityPlayerMP player, BlockPos pos)
@@ -169,15 +169,16 @@ public final class PlayerHelper
 		}
 	}
 
-	public static void updateClientServerFlight(EntityPlayerMP player, boolean state)
+	public static void updateClientServerFlight(EntityPlayerMP player, boolean allowFlying)
 	{
-		PacketHandler.sendTo(new SetFlyPKT(state), player);
-		player.capabilities.allowFlying = state;
+		updateClientServerFlight(player, allowFlying, allowFlying && player.capabilities.isFlying);
+	}
 
-		if (!state)
-		{
-			player.capabilities.isFlying = false;
-		}
+	public static void updateClientServerFlight(EntityPlayerMP player, boolean allowFlying, boolean isFlying)
+	{
+		PacketHandler.sendTo(new SetFlyPKT(allowFlying, isFlying), player);
+		player.capabilities.allowFlying = allowFlying;
+		player.capabilities.isFlying = isFlying;
 	}
 
 	public static void updateClientServerStepHeight(EntityPlayerMP player, float value)

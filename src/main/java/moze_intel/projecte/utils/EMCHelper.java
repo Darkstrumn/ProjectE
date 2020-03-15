@@ -18,6 +18,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 
+import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -31,7 +32,7 @@ public final class EMCHelper
 	 * Consumes EMC from fuel items or Klein Stars
 	 * Any extra EMC is discarded !!! To retain remainder EMC use ItemPE.consumeFuel()
 	 */
-	public static double consumePlayerFuel(EntityPlayer player, double minFuel)
+	public static long consumePlayerFuel(EntityPlayer player, long minFuel)
 	{
 		if (player.capabilities.isCreativeMode)
 		{
@@ -41,7 +42,20 @@ public final class EMCHelper
 		IItemHandler inv = player.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, EnumFacing.UP);
 		Map<Integer, Integer> map = new LinkedHashMap<>();
 		boolean metRequirement = false;
-		int emcConsumed = 0;
+		long emcConsumed = 0;
+
+		ItemStack offhand = player.getHeldItemOffhand();
+
+		if (!offhand.isEmpty() && offhand.getItem() instanceof IItemEmc)
+		{
+			IItemEmc itemEmc = ((IItemEmc) offhand.getItem());
+			if (itemEmc.getStoredEmc(offhand) >= minFuel)
+			{
+				itemEmc.extractEmc(offhand, minFuel);
+				player.inventoryContainer.detectAndSendChanges();
+				return minFuel;
+			}
+		}
 
 		for (int i = 0; i < inv.getSlots(); i++)
 		{
@@ -65,8 +79,8 @@ public final class EMCHelper
 			{
 				if(FuelMapper.isStackFuel(stack))
 				{
-					int emc = getEmcValue(stack);
-					int toRemove = ((int) Math.ceil((minFuel - emcConsumed) / (float) emc));
+					long emc = getEmcValue(stack);
+					int toRemove = (int)Math.ceil((double) (minFuel - emcConsumed) / emc);
 
 					if (stack.getCount() >= toRemove)
 					{
@@ -135,7 +149,7 @@ public final class EMCHelper
 		return item != null && doesItemHaveEmc(new ItemStack(item));
 	}
 
-	public static int getEmcValue(Block block)
+	public static long getEmcValue(Block block)
 	{
 		SimpleStack stack = new SimpleStack(new ItemStack(block));
 
@@ -147,7 +161,7 @@ public final class EMCHelper
 		return 0;
 	}
 
-	public static int getEmcValue(Item item)
+	public static long getEmcValue(Item item)
 	{
 		SimpleStack stack = new SimpleStack(new ItemStack(item));
 
@@ -162,7 +176,7 @@ public final class EMCHelper
 	/**
 	 * Does not consider stack size
 	 */
-	public static int getEmcValue(ItemStack stack)
+	public static long getEmcValue(ItemStack stack)
 	{
 		if (stack.isEmpty())
 		{
@@ -183,7 +197,7 @@ public final class EMCHelper
 
 			if (EMCMapper.mapContains(iStack))
 			{
-				int emc = EMCMapper.getEmcValue(iStack);
+				long emc = EMCMapper.getEmcValue(iStack);
 
 				// maxDmg + 1 because vanilla lets you use the tool one more time
 				// when item damage == max damage (shows as Durability: 0 / max)
@@ -205,12 +219,19 @@ public final class EMCHelper
 				}
 
 				result /= stack.getMaxDamage();
+				boolean positive = result > 0;
 				result += getEnchantEmcBonus(stack);
 
+				//If it was positive and then became negative that means it overflowed
+				if (positive && result < 0) {
+					return emc;
+				}
+
+				positive = result > 0;
 				result += getStoredEMCBonus(stack);
 
-				if (result > Integer.MAX_VALUE)
-				{
+				//If it was positive and then became negative that means it overflowed
+				if (positive && result < 0) {
 					return emc;
 				}
 
@@ -219,23 +240,23 @@ public final class EMCHelper
 					return 1;
 				}
 
-				return (int) result;
+				return result;
 			}
 		}
 		else
 		{
 			if (EMCMapper.mapContains(iStack))
 			{
-				return EMCMapper.getEmcValue(iStack) + getEnchantEmcBonus(stack) + (int)getStoredEMCBonus(stack);
+				return EMCMapper.getEmcValue(iStack) + getEnchantEmcBonus(stack) + getStoredEMCBonus(stack);
 			}
 		}
 
 		return 0;
 	}
 
-	private static int getEnchantEmcBonus(ItemStack stack)
+	private static long getEnchantEmcBonus(ItemStack stack)
 	{
-		int result = 0;
+		long result = 0;
 
 		Map<Enchantment, Integer> enchants = EnchantmentHelper.getEnchantments(stack);
 
@@ -256,20 +277,27 @@ public final class EMCHelper
 		return result;
 	}
 
-	public static int getEmcSellValue(ItemStack stack)
+	public static long getEmcSellValue(ItemStack stack)
 	{
-		double originalValue = EMCHelper.getEmcValue(stack);
+		long originalValue = EMCHelper.getEmcValue(stack);
 
 		if (originalValue == 0)
 		{
 			return 0;
 		}
 
-		int emc = MathHelper.floor(originalValue * EMCMapper.covalenceLoss);
+		long emc = (long) Math.floor(originalValue * EMCMapper.covalenceLoss);
 
 		if (emc < 1)
 		{
-			emc = 1;
+			if (EMCMapper.covalenceLossRounding)
+			{
+				emc = 1;
+			}
+			else
+			{
+				emc = 0;
+			}
 		}
 
 		return emc;
@@ -282,39 +310,53 @@ public final class EMCHelper
 			return " ";
 		}
 
-		int emc = EMCHelper.getEmcSellValue(stack);
+		BigInteger emc = BigInteger.valueOf(EMCHelper.getEmcSellValue(stack));
 
-		return " (" + Constants.EMC_FORMATTER.format((emc * stackSize)) + ")";
+		return " (" + Constants.EMC_FORMATTER.format(emc.multiply(BigInteger.valueOf(stackSize))) + ")";
 	}
 
-	public static int getKleinStarMaxEmc(ItemStack stack)
+	public static long getKleinStarMaxEmc(ItemStack stack)
 	{
 		return Constants.MAX_KLEIN_EMC[stack.getItemDamage()];
 	}
 
-	private static double getStoredEMCBonus(ItemStack stack) {
+	private static long getStoredEMCBonus(ItemStack stack) {
 		if (stack.getTagCompound() != null && stack.getTagCompound().hasKey("StoredEMC")) {
-			return stack.getTagCompound().getDouble("StoredEMC");
+			return stack.getTagCompound().getLong("StoredEMC");
 		} else if (stack.getItem() instanceof IItemEmc) {
 			return ((IItemEmc) stack.getItem()).getStoredEmc(stack);
 		}
 		return 0;
 	}
 
-	public static int getEMCPerDurability(ItemStack stack){
-
-		int emc;
-
-		if(stack == null)
+	public static long getEMCPerDurability(ItemStack stack) {
+		if(stack.isEmpty())
 			return 0;
 
-		ItemStack stackCopy = stack.copy();
-		stackCopy.setItemDamage(0);
-
 		if(ItemHelper.isItemRepairable(stack)){
-			emc = (int)Math.ceil(EMCHelper.getEmcValue(stackCopy) / stack.getMaxDamage());
+			ItemStack stackCopy = stack.copy();
+			stackCopy.setItemDamage(0);
+			long emc = (long)Math.ceil(EMCHelper.getEmcValue(stackCopy) / (double) stack.getMaxDamage());
 			return emc > 1 ? emc : 1;
 		}
 		return 1;
+	}
+
+	/**
+	 * Adds the given amount to the amount of unprocessed EMC the stack has.
+	 * The amount returned should be used for figuring out how much EMC actually gets removed.
+	 * While the remaining fractional EMC will be stored in UnprocessedEMC.
+	 * @param stack The stack to set the UnprocessedEMC tag to.
+	 * @param amount The partial amount of EMC to add with the current UnprocessedEMC
+	 * @return The amount of non fractional EMC no longer being stored in UnprocessedEMC.
+	 */
+	public static long removeFractionalEMC(ItemStack stack, double amount)
+	{
+		double unprocessedEMC = ItemHelper.getOrCreateCompound(stack).getDouble("UnprocessedEMC");
+		unprocessedEMC += amount;
+		long toRemove = (long) unprocessedEMC;
+		unprocessedEMC -= toRemove;
+		stack.getTagCompound().setDouble("UnprocessedEMC", unprocessedEMC);
+		return toRemove;
 	}
 }

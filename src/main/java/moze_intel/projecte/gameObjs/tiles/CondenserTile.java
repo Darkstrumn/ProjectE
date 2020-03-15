@@ -21,17 +21,17 @@ import javax.annotation.Nonnull;
 
 public class CondenserTile extends TileEmc implements IEmcAcceptor
 {
-	private final ItemStackHandler inputInventory = createInput();
+	protected final ItemStackHandler inputInventory = createInput();
 	private final ItemStackHandler outputInventory = createOutput();
 	private final IItemHandler automationInventory = createAutomationInventory();
 	private final ItemStackHandler lock = new StackHandler(1);
 	private boolean isAcceptingEmc;
 	private int ticksSinceSync;
-	public int displayEmc;
+	public long displayEmc;
 	public float lidAngle;
 	public float prevLidAngle;
 	public int numPlayersUsing;
-	public int requiredEmc;
+	public long requiredEmc;
 
 	public ItemStackHandler getLock()
 	{
@@ -113,7 +113,7 @@ public class CondenserTile extends TileEmc implements IEmcAcceptor
 
 		checkLockAndUpdate();
 
-		displayEmc = (int) this.getStoredEmc();
+		displayEmc = this.getStoredEmc();
 
 		if (!lock.getStackInSlot(0).isEmpty() && requiredEmc != 0)
 		{
@@ -133,7 +133,7 @@ public class CondenserTile extends TileEmc implements IEmcAcceptor
 
 		if (EMCHelper.doesItemHaveEmc(lock.getStackInSlot(0)))
 		{
-			int lockEmc = EMCHelper.getEmcValue(lock.getStackInSlot(0));
+			long lockEmc = EMCHelper.getEmcValue(lock.getStackInSlot(0));
 
 			if (requiredEmc != lockEmc)
 			{
@@ -243,7 +243,7 @@ public class CondenserTile extends TileEmc implements IEmcAcceptor
 	{
 		if (++ticksSinceSync % 20 * 4 == 0)
 		{
-			world.addBlockEvent(pos, ObjHandler.condenser, 1, numPlayersUsing);
+			world.addBlockEvent(pos, getBlockType(), 1, numPlayersUsing);
 		}
 
 		prevLidAngle = lidAngle;
@@ -296,11 +296,11 @@ public class CondenserTile extends TileEmc implements IEmcAcceptor
 	}
 
 	@Override
-	public double acceptEMC(@Nonnull EnumFacing side, double toAccept)
+	public long acceptEMC(@Nonnull EnumFacing side, long toAccept)
 	{
 		if (isAcceptingEmc)
 		{
-			double toAdd = Math.min(maximumEMC - currentEMC, toAccept);
+			long toAdd = Math.min(maximumEMC - currentEMC, toAccept);
 			addEMC(toAdd);
 			return toAdd;
 		}

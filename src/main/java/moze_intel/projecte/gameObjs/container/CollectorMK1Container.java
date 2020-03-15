@@ -1,6 +1,7 @@
 package moze_intel.projecte.gameObjs.container;
 
 import moze_intel.projecte.emc.FuelMapper;
+import moze_intel.projecte.gameObjs.ObjHandler;
 import moze_intel.projecte.gameObjs.container.slots.SlotGhost;
 import moze_intel.projecte.gameObjs.container.slots.SlotPredicates;
 import moze_intel.projecte.gameObjs.container.slots.ValidatedSlot;
@@ -19,14 +20,14 @@ import net.minecraftforge.items.IItemHandler;
 
 import javax.annotation.Nonnull;
 
-public class CollectorMK1Container extends Container
+public class CollectorMK1Container extends LongContainer
 {
 	final CollectorMK1Tile tile;
 	public int sunLevel = 0;
-	public int emc = 0;
+	public long emc = 0;
 	public double kleinChargeProgress = 0;
 	public double fuelProgress = 0;
-	public int kleinEmc = 0;
+	public long kleinEmc = 0;
 
 	public CollectorMK1Container(InventoryPlayer invPlayer, CollectorMK1Tile collector)
 	{
@@ -69,10 +70,10 @@ public class CollectorMK1Container extends Container
 	{
 		super.addListener(listener);
 		PacketHandler.sendProgressBarUpdateInt(listener, this, 0, tile.getSunLevel());
-		PacketHandler.sendProgressBarUpdateInt(listener, this, 1, (int) tile.getStoredEmc());
+		PacketHandler.sendProgressBarUpdateLong(listener, this, 1, tile.getStoredEmc());
 		PacketHandler.sendProgressBarUpdateInt(listener, this, 2, (int) (tile.getItemChargeProportion() * 8000));
 		PacketHandler.sendProgressBarUpdateInt(listener, this, 3, (int) (tile.getFuelProgress() * 8000));
-		PacketHandler.sendProgressBarUpdateInt(listener, this, 4, (int) (tile.getItemCharge() * 8000));
+		PacketHandler.sendProgressBarUpdateLong(listener, this, 4, tile.getItemCharge());
 	}
 
 	@Nonnull
@@ -104,14 +105,14 @@ public class CollectorMK1Container extends Container
 			sunLevel = tile.getSunLevel();
 		}
 
-		if (emc != ((int) tile.getStoredEmc()))
+		if (emc != tile.getStoredEmc())
 		{
 			for (IContainerListener icrafting : this.listeners)
 			{
-				PacketHandler.sendProgressBarUpdateInt(icrafting, this, 1, ((int) tile.getStoredEmc()));
+				PacketHandler.sendProgressBarUpdateLong(icrafting, this, 1, tile.getStoredEmc());
 			}
 
-			emc = ((int) tile.getStoredEmc());
+			emc = tile.getStoredEmc();
 		}
 
 		if (kleinChargeProgress != tile.getItemChargeProportion())
@@ -134,14 +135,14 @@ public class CollectorMK1Container extends Container
 			fuelProgress = tile.getFuelProgress();
 		}
 
-		if (kleinEmc != ((int) tile.getItemCharge()))
+		if (kleinEmc != tile.getItemCharge())
 		{
 			for (IContainerListener icrafting : this.listeners)
 			{
-				PacketHandler.sendProgressBarUpdateInt(icrafting, this, 4, (int) (tile.getItemCharge()));
+				PacketHandler.sendProgressBarUpdateLong(icrafting, this, 4, tile.getItemCharge());
 			}
 
-			kleinEmc = ((int) tile.getItemCharge());
+			kleinEmc = tile.getItemCharge();
 		}
 
 	}
@@ -157,6 +158,18 @@ public class CollectorMK1Container extends Container
 			case 2: kleinChargeProgress = data / 8000.0; break;
 			case 3: fuelProgress = data / 8000.0; break;
 			case 4: kleinEmc = data; break;
+		}
+	}
+
+	@Override
+	@SideOnly(Side.CLIENT)
+	public void updateProgressBarLong(int id, long data)
+	{
+		switch (id)
+		{
+			case 1: emc = data; break;
+			case 4: kleinEmc = data; break;
+			default: updateProgressBar(id, (int) data);
 		}
 	}
 
@@ -208,6 +221,7 @@ public class CollectorMK1Container extends Container
 	@Override
 	public boolean canInteractWith(@Nonnull EntityPlayer player)
 	{
-		return player.getDistanceSq(tile.getPos().getX() + 0.5, tile.getPos().getY() + 0.5, tile.getPos().getZ() + 0.5) <= 64.0;
+		return player.world.getBlockState(tile.getPos()).getBlock() == ObjHandler.collectorMK1
+			&& player.getDistanceSq(tile.getPos().getX() + 0.5, tile.getPos().getY() + 0.5, tile.getPos().getZ() + 0.5) <= 64.0;
 	}
 }

@@ -6,8 +6,8 @@ import moze_intel.projecte.emc.json.NSSFake;
 import moze_intel.projecte.emc.json.NSSItem;
 import moze_intel.projecte.emc.json.NormalizedSimpleStack;
 import moze_intel.projecte.emc.collector.IMappingCollector;
-import moze_intel.projecte.gameObjs.customRecipes.RecipeShapedKleinStar;
 import moze_intel.projecte.gameObjs.customRecipes.RecipeShapelessHidden;
+import moze_intel.projecte.gameObjs.customRecipes.RecipeShapelessKleinStar;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.CraftingManager;
 import net.minecraft.item.crafting.IRecipe;
@@ -29,14 +29,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class CraftingMapper implements IEMCMapper<NormalizedSimpleStack, Integer> {
+public class CraftingMapper implements IEMCMapper<NormalizedSimpleStack, Long> {
 
-	private final List<IRecipeMapper> recipeMappers = Arrays.asList(new VanillaRecipeMapper(), new PECustomRecipeMapper());
+	private final List<IRecipeMapper> recipeMappers = Arrays.asList(new VanillaRecipeMapper(), new PECustomRecipeMapper(), new CraftTweakerRecipeMapper(), new RecipeStagesRecipeMapper());
 	private final Set<Class> canNotMap = new HashSet<>();
 	private final Map<Class, Integer> recipeCount = new HashMap<>();
 
 	@Override
-	public void addMappings(IMappingCollector<NormalizedSimpleStack, Integer> mapper, final Configuration config) {
+	public void addMappings(IMappingCollector<NormalizedSimpleStack, Long> mapper, final Configuration config) {
 		recipeCount.clear();
 		canNotMap.clear();
 		nextRecipe: for (IRecipe recipe : CraftingManager.REGISTRY) {
@@ -84,7 +84,7 @@ public class CraftingMapper implements IEMCMapper<NormalizedSimpleStack, Integer
 			}
 			if (!handled) {
 				if (canNotMap.add(recipe.getClass())) {
-					PECore.LOGGER.warn("Can not map Crafting Recipes with Type: {}", recipe.getClass().getName());
+					PECore.debugLog("Can not map Crafting Recipes with Type: {}", recipe.getClass().getName());
 				}
 			} else {
 				int count = 0;
@@ -96,9 +96,9 @@ public class CraftingMapper implements IEMCMapper<NormalizedSimpleStack, Integer
 			}
 		}
 
-		PECore.LOGGER.debug("CraftingMapper Statistics:");
+		PECore.debugLog("CraftingMapper Statistics:");
 		for (Map.Entry<Class, Integer> entry: recipeCount.entrySet()) {
-			PECore.LOGGER.debug("Found {} Recipes of Type {}", entry.getValue(), entry.getKey());
+			PECore.debugLog("Found {} Recipes of Type {}", entry.getValue(), entry.getKey());
 		}
 	}
 
@@ -182,7 +182,7 @@ public class CraftingMapper implements IEMCMapper<NormalizedSimpleStack, Integer
 
 		@Override
 		public boolean canHandle(IRecipe recipe) {
-			return recipe instanceof RecipeShapedKleinStar || recipe instanceof RecipeShapelessHidden;
+			return recipe instanceof RecipeShapelessKleinStar || recipe instanceof RecipeShapelessHidden;
 		}
 	}
 }

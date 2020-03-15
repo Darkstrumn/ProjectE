@@ -4,10 +4,12 @@ import baubles.api.BaubleType;
 import baubles.api.IBauble;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import moze_intel.projecte.api.item.IItemCharge;
 import moze_intel.projecte.api.item.IModeChanger;
 import moze_intel.projecte.api.item.IPedestalItem;
 import moze_intel.projecte.config.ProjectEConfig;
 import moze_intel.projecte.gameObjs.tiles.DMPedestalTile;
+import moze_intel.projecte.utils.EMCHelper;
 import moze_intel.projecte.utils.ItemHelper;
 import moze_intel.projecte.utils.WorldHelper;
 import net.minecraft.block.Block;
@@ -41,23 +43,25 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
 @Optional.Interface(iface = "baubles.api.IBauble", modid = "baubles")
-public class TimeWatch extends ItemCharge implements IModeChanger, IBauble, IPedestalItem
+public class TimeWatch extends ItemPE implements IModeChanger, IBauble, IPedestalItem, IItemCharge
 {
+	// TODO 1.13 remove
 	private static final Set<String> internalBlacklist = Sets.newHashSet(
-			"moze_intel.projecte.gameObjs.tiles.DMPedestalTile",
 			"Reika.ChromatiCraft.TileEntity.AOE.TileEntityAccelerator",
 			"com.sci.torcherino.tile.TileTorcherino",
 			"com.sci.torcherino.tile.TileCompressedTorcherino",
 			"thaumcraft.common.tiles.crafting.TileSmelter"
 	);
-	
+
 	public TimeWatch() 
 	{
-		super("time_watch", (byte)2);
+		this.setTranslationKey("time_watch");
+		this.setMaxStackSize(1);
 		this.setNoRepair();
 		this.addPropertyOverride(ACTIVE_NAME, ACTIVE_GETTER);
 	}
@@ -133,7 +137,7 @@ public class TimeWatch extends ItemCharge implements IModeChanger, IBauble, IPed
 		}
 
 		EntityPlayer player = (EntityPlayer) entity;
-		double reqEmc = getEmcPerTick(this.getCharge(stack));
+		long reqEmc = EMCHelper.removeFractionalEMC(stack, getEmcPerTick(this.getCharge(stack)));
 		
 		if (!consumeFuel(player, stack, reqEmc, true))
 		{
@@ -195,12 +199,16 @@ public class TimeWatch extends ItemCharge implements IModeChanger, IBauble, IPed
 		{
 			return;
 		}
+
+		List<String> blacklist = Arrays.asList(ProjectEConfig.effects.timeWatchTEBlacklist);
 		List<TileEntity> list = WorldHelper.getTileEntitiesWithinAABB(world, bBox);
 		for (int i = 0; i < bonusTicks; i++)
 		{
 			for (TileEntity tile : list)
 			{
-				if (!tile.isInvalid() && tile instanceof ITickable && !internalBlacklist.contains(tile.getClass().getName()))
+				if (!tile.isInvalid() && tile instanceof ITickable
+						&& !internalBlacklist.contains(tile.getClass().toString())
+						&& !blacklist.contains(TileEntity.getKey(tile.getClass()).toString()))
 				{
 					((ITickable) tile).update();
 				}
@@ -215,6 +223,7 @@ public class TimeWatch extends ItemCharge implements IModeChanger, IBauble, IPed
 			return;
 		}
 
+		List<String> blacklist = Arrays.asList(ProjectEConfig.effects.timeWatchBlockBlacklist);
 		for (BlockPos pos : WorldHelper.getPositionsFromBox(bBox))
 		{
 			for (int i = 0; i < bonusTicks; i++)
@@ -222,6 +231,7 @@ public class TimeWatch extends ItemCharge implements IModeChanger, IBauble, IPed
 				IBlockState state = world.getBlockState(pos);
 				Block block = state.getBlock();
 				if (block.getTickRandomly()
+						&& !blacklist.contains(block.getRegistryName().toString())
 						&& !(block instanceof BlockLiquid) // Don't speed vanilla non-source blocks - dupe issues
 						&& !(block instanceof BlockFluidBase) // Don't speed Forge fluids - just in case of dupes as well
 						&& !(block instanceof IGrowable)
@@ -261,7 +271,7 @@ public class TimeWatch extends ItemCharge implements IModeChanger, IBauble, IPed
 
 	public double getEmcPerTick(int charge)
 	{
-		int actualCharge = charge + 1;
+		int actualCharge = charge + 2;
 		return (10.0D * actualCharge) / 20.0D;
 	}
 
@@ -372,5 +382,23 @@ public class TimeWatch extends ItemCharge implements IModeChanger, IBauble, IPed
 	public static void blacklist(Class<? extends TileEntity> clazz)
 	{
 		internalBlacklist.add(clazz.getName());
+	}
+
+	@Override
+	public int getNumCharges(@Nonnull ItemStack stack)
+	{
+		return 2;
+	}
+
+	@Override
+	public boolean showDurabilityBar(ItemStack stack)
+	{
+		return true;
+	}
+
+	@Override
+	public double getDurabilityForDisplay(ItemStack stack)
+	{
+		return 1.0D - (double) getCharge(stack) / getNumCharges(stack);
 	}
 }

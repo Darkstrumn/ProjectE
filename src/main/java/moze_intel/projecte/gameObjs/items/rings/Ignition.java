@@ -10,6 +10,7 @@ import moze_intel.projecte.config.ProjectEConfig;
 import moze_intel.projecte.gameObjs.entity.EntityFireProjectile;
 import moze_intel.projecte.gameObjs.items.IFireProtector;
 import moze_intel.projecte.gameObjs.tiles.DMPedestalTile;
+import moze_intel.projecte.utils.EMCHelper;
 import moze_intel.projecte.utils.ItemHelper;
 import moze_intel.projecte.utils.MathUtils;
 import moze_intel.projecte.utils.PlayerHelper;
@@ -67,7 +68,7 @@ public class Ignition extends RingToggle implements IBauble, IPedestalItem, IFir
 			else 
 			{
 				WorldHelper.igniteNearby(world, player);
-				removeEmc(stack, 0.32F);
+				removeEmc(stack, EMCHelper.removeFractionalEMC(stack, 0.32F));
 			}
 		}
 		else 
@@ -193,7 +194,7 @@ public class Ignition extends RingToggle implements IBauble, IPedestalItem, IFir
 		if(world.isRemote) return false;
 		
 		EntityFireProjectile fire = new EntityFireProjectile(world, player);
-		fire.setHeadingFromThrower(player, player.rotationPitch, player.rotationYaw, 0, 1.5F, 1);
+		fire.shoot(player, player.rotationPitch, player.rotationYaw, 0, 1.5F, 1);
 		world.spawnEntity(fire);
 		
 		return true;

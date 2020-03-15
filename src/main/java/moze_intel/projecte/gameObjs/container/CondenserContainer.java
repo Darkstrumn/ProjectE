@@ -1,5 +1,8 @@
 package moze_intel.projecte.gameObjs.container;
 
+import moze_intel.projecte.api.event.PlayerAttemptCondenserSetEvent;
+import moze_intel.projecte.gameObjs.ObjHandler;
+import moze_intel.projecte.gameObjs.blocks.Condenser;
 import moze_intel.projecte.gameObjs.container.slots.SlotCondenserLock;
 import moze_intel.projecte.gameObjs.container.slots.SlotPredicates;
 import moze_intel.projecte.gameObjs.container.slots.ValidatedSlot;
@@ -14,17 +17,18 @@ import net.minecraft.inventory.Container;
 import net.minecraft.inventory.IContainerListener;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.items.IItemHandler;
 
 import javax.annotation.Nonnull;
 
-public class CondenserContainer extends Container
+public class CondenserContainer extends LongContainer
 {	
-	final CondenserTile tile;
-	public int displayEmc;
-	public int requiredEmc;
+	protected final CondenserTile tile;
+	public long displayEmc;
+	public long requiredEmc;
 	
 	public CondenserContainer(InventoryPlayer invPlayer, CondenserTile condenser)
 	{
@@ -33,7 +37,7 @@ public class CondenserContainer extends Container
 		initSlots(invPlayer);
 	}
 
-	void initSlots(InventoryPlayer invPlayer)
+	protected void initSlots(InventoryPlayer invPlayer)
 	{
 		this.addSlotToContainer(new SlotCondenserLock(tile.getLock(), 0, 12, 6));
 
@@ -59,8 +63,8 @@ public class CondenserContainer extends Container
 	public void addListener(IContainerListener listener)
 	{
 		super.addListener(listener);
-		PacketHandler.sendProgressBarUpdateInt(listener, this, 0, tile.displayEmc);
-		PacketHandler.sendProgressBarUpdateInt(listener, this, 1, tile.requiredEmc);
+		PacketHandler.sendProgressBarUpdateLong(listener, this, 0, tile.displayEmc);
+		PacketHandler.sendProgressBarUpdateLong(listener, this, 1, tile.requiredEmc);
 	}
 
 	@Override
@@ -72,7 +76,7 @@ public class CondenserContainer extends Container
 		{
 			for (IContainerListener listener : listeners)
 			{
-				PacketHandler.sendProgressBarUpdateInt(listener, this, 0, tile.displayEmc);
+				PacketHandler.sendProgressBarUpdateLong(listener, this, 0, tile.displayEmc);
 			}
 
 			displayEmc = tile.displayEmc;
@@ -82,7 +86,7 @@ public class CondenserContainer extends Container
 		{
 			for (IContainerListener listener : listeners)
 			{
-				PacketHandler.sendProgressBarUpdateInt(listener, this, 1, tile.requiredEmc);
+				PacketHandler.sendProgressBarUpdateLong(listener, this, 1, tile.requiredEmc);
 			}
 
 			requiredEmc = tile.requiredEmc;
@@ -92,6 +96,17 @@ public class CondenserContainer extends Container
 	@Override
 	@SideOnly(Side.CLIENT)
 	public void updateProgressBar(int id, int data)
+	{
+		switch(id)
+		{
+			case 0: displayEmc = data; break;
+			case 1: requiredEmc = data; break;
+		}
+	}
+
+	@Override
+	@SideOnly(Side.CLIENT)
+	public void updateProgressBarLong(int id, long data)
 	{
 		switch(id)
 		{
@@ -138,7 +153,8 @@ public class CondenserContainer extends Container
 	@Override
 	public boolean canInteractWith(@Nonnull EntityPlayer player)
 	{
-		return player.getDistanceSq(tile.getPos().getX() + 0.5, tile.getPos().getY() + 0.5, tile.getPos().getZ() + 0.5) <= 64.0;
+		return player.world.getBlockState(tile.getPos()).getBlock() instanceof Condenser
+			&& player.getDistanceSq(tile.getPos().getX() + 0.5, tile.getPos().getY() + 0.5, tile.getPos().getZ() + 0.5) <= 64.0;
 	}
 	
 	@Override
@@ -152,7 +168,7 @@ public class CondenserContainer extends Container
 	@Override
 	public ItemStack slotClick(int slot, int button, ClickType flag, EntityPlayer player)
 	{
-		if (slot == 0 && !tile.getLock().getStackInSlot(0).isEmpty())
+		if (slot == 0 && (!tile.getLock().getStackInSlot(0).isEmpty() || MinecraftForge.EVENT_BUS.post(new PlayerAttemptCondenserSetEvent(player, player.inventory.getItemStack()))))
 		{
 			if (!player.getEntityWorld().isRemote)
 			{
@@ -176,6 +192,6 @@ public class CondenserContainer extends Container
 			return Constants.MAX_CONDENSER_PROGRESS;
 		}
 
-		return (displayEmc * Constants.MAX_CONDENSER_PROGRESS) / requiredEmc;
+		return (int) (Constants.MAX_CONDENSER_PROGRESS * ((double) displayEmc / requiredEmc));
 	}
 }

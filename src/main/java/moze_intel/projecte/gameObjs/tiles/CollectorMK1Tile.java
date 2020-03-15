@@ -1,6 +1,7 @@
 package moze_intel.projecte.gameObjs.tiles;
 
 import moze_intel.projecte.api.item.IItemEmc;
+import moze_intel.projecte.api.tile.IEmcAcceptor;
 import moze_intel.projecte.api.tile.IEmcProvider;
 import moze_intel.projecte.emc.FuelMapper;
 import moze_intel.projecte.gameObjs.container.slots.SlotPredicates;
@@ -23,7 +24,7 @@ import net.minecraftforge.items.wrapper.RangedWrapper;
 import javax.annotation.Nonnull;
 import java.util.Map;
 
-public class CollectorMK1Tile extends TileEmc implements IEmcProvider
+public class CollectorMK1Tile extends TileEmc implements IEmcProvider, IEmcAcceptor
 {
 	private final ItemStackHandler input = new StackHandler(getInvSize());
 	private final ItemStackHandler auxSlots = new StackHandler(3);
@@ -53,10 +54,11 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 	public static final int UPGRADE_SLOT = 1;
 	public static final int LOCK_SLOT = 2;
 
-	private final int emcGen;
+	private final long emcGen;
 	private boolean hasChargeableItem;
 	private boolean hasFuel;
-	private double storedFuelEmc;
+	private long storedFuelEmc;
+	private double unprocessedEMC;
 
 	public CollectorMK1Tile()
 	{
@@ -64,7 +66,7 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 		emcGen = Constants.COLLECTOR_MK1_GEN;
 	}
 	
-	public CollectorMK1Tile(int maxEmc, int emcGen)
+	public CollectorMK1Tile(long maxEmc, long emcGen)
 	{
 		super(maxEmc);
 		this.emcGen = emcGen;
@@ -175,7 +177,12 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 	{
 		if (!this.hasMaxedEmc())
 		{
-			this.addEMC(getSunRelativeEmc(emcGen) / 20.0f);
+			unprocessedEMC += emcGen * (getSunLevel() / 320.0f);
+			if (unprocessedEMC >= 1) {
+				long emcToAdd = (long) unprocessedEMC;
+				this.addEMC(emcToAdd);
+				unprocessedEMC -= emcToAdd;
+			}
 		}
 
 		if (this.getStoredEmc() == 0)
@@ -184,11 +191,11 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 		}
 		else if (hasChargeableItem)
 		{
-			double toSend = this.getStoredEmc() < emcGen ? this.getStoredEmc() : emcGen;
+			long toSend = this.getStoredEmc() < emcGen ? this.getStoredEmc() : emcGen;
 			IItemEmc item = (IItemEmc) getUpgrading().getItem();
 			
-			double itemEmc = item.getStoredEmc(getUpgrading());
-			double maxItemEmc = item.getMaximumEmc(getUpgrading());
+			long itemEmc = item.getStoredEmc(getUpgrading());
+			long maxItemEmc = item.getMaximumEmc(getUpgrading());
 			
 			if ((itemEmc + toSend) > maxItemEmc)
 			{
@@ -207,9 +214,9 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 
 			ItemStack result = getLock().isEmpty() ? FuelMapper.getFuelUpgrade(getUpgrading()) : getLock().copy();
 			
-			int upgradeCost = EMCHelper.getEmcValue(result) - EMCHelper.getEmcValue(getUpgrading());
+			long upgradeCost = EMCHelper.getEmcValue(result) - EMCHelper.getEmcValue(getUpgrading());
 			
-			if (upgradeCost > 0 && this.getStoredEmc() >= upgradeCost)
+			if (upgradeCost >= 0 && this.getStoredEmc() >= upgradeCost)
 			{
 				ItemStack upgrade = getUpgraded();
 
@@ -229,18 +236,14 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 		}
 		else
 		{
-			double toSend = this.getStoredEmc() < emcGen ? this.getStoredEmc() : emcGen;
+			//Only send EMC when we are not upgrading fuel or charging an item
+			long toSend = this.getStoredEmc() < emcGen ? this.getStoredEmc() : emcGen;
 			this.sendToAllAcceptors(toSend);
 			this.sendRelayBonus();
 		}
 	}
-	
-	private float getSunRelativeEmc(int emc)
-	{
-		return (float) getSunLevel() * emc / 16;
-	}
 
-	public double getEmcToNextGoal()
+	public long getEmcToNextGoal()
 	{
 		if (!getLock().isEmpty())
 		{
@@ -252,7 +255,7 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 		}
 	}
 
-	public double getItemCharge()
+	public long getItemCharge()
 	{
 		if (!getUpgrading().isEmpty() && getUpgrading().getItem() instanceof IItemEmc)
 		{
@@ -264,14 +267,20 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 
 	public double getItemChargeProportion()
 	{
-		double charge = getItemCharge();
+		long charge = getItemCharge();
 
 		if (getUpgrading().isEmpty() || charge <= 0 || !(getUpgrading().getItem() instanceof IItemEmc))
 		{
 			return -1;
 		}
 
-		return charge / ((IItemEmc) getUpgrading().getItem()).getMaximumEmc(getUpgrading());
+		long max = ((IItemEmc) getUpgrading().getItem()).getMaximumEmc(getUpgrading());
+		if (charge >= max)
+		{
+			return 1;
+		}
+
+		return (double) charge / max;
 	}
 	
 	public int getSunLevel()
@@ -290,7 +299,7 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 			return 0;
 		}
 
-		int reqEmc;
+		long reqEmc;
 
 		if (!getLock().isEmpty())
 		{
@@ -320,16 +329,17 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 			return 1;
 		}
 
-		return getStoredEmc() / reqEmc;
+		return (double) getStoredEmc() / reqEmc;
 	}
 	
 	@Override
 	public void readFromNBT(NBTTagCompound nbt)
 	{
 		super.readFromNBT(nbt);
-		storedFuelEmc = nbt.getDouble("FuelEMC");
+		storedFuelEmc = nbt.getLong("FuelEMC");
 		input.deserializeNBT(nbt.getCompoundTag("Input"));
 		auxSlots.deserializeNBT(nbt.getCompoundTag("AuxSlots"));
+		unprocessedEMC = nbt.getDouble("UnprocessedEMC");
 	}
 	
 	@Nonnull
@@ -337,9 +347,10 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 	public NBTTagCompound writeToNBT(NBTTagCompound nbt)
 	{
 		nbt = super.writeToNBT(nbt);
-		nbt.setDouble("FuelEMC", storedFuelEmc);
+		nbt.setLong("FuelEMC", storedFuelEmc);
 		nbt.setTag("Input", input.serializeNBT());
 		nbt.setTag("AuxSlots", auxSlots.serializeNBT());
+		nbt.setDouble("UnprocessedEMC", unprocessedEMC);
 		return nbt;
 	}
 
@@ -352,24 +363,37 @@ public class CollectorMK1Tile extends TileEmc implements IEmcProvider
 
 			if (tile instanceof RelayMK3Tile)
 			{
-				((RelayMK3Tile) tile).acceptEMC(dir, 0.5);
+				((RelayMK3Tile) tile).addBonus(dir, 0.5);
 			}
 			else if (tile instanceof RelayMK2Tile)
 			{
-				((RelayMK2Tile) tile).acceptEMC(dir, 0.15);
+				((RelayMK2Tile) tile).addBonus(dir, 0.15);
 			}
 			else if (tile instanceof RelayMK1Tile)
 			{
-				((RelayMK1Tile) tile).acceptEMC(dir, 0.05);
+				((RelayMK1Tile) tile).addBonus(dir, 0.05);
 			}
 		}
 	}
 
 	@Override
-	public double provideEMC(@Nonnull EnumFacing side, double toExtract)
+	public long provideEMC(@Nonnull EnumFacing side, long toExtract)
 	{
-		double toRemove = Math.min(currentEMC, toExtract);
+		long toRemove = Math.min(currentEMC, toExtract);
 		removeEMC(toRemove);
 		return toRemove;
+	}
+
+	@Override
+	public long acceptEMC(@Nonnull EnumFacing side, long toAccept)
+	{
+		if (hasFuel || hasChargeableItem)
+		{
+			//Collector accepts EMC from providers if it has fuel/chargeable. Otherwise it sends it to providers
+			long toAdd = Math.min(maximumEMC - currentEMC, toAccept);
+			currentEMC += toAdd;
+			return toAdd;
+		}
+		return 0;
 	}
 }

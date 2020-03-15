@@ -185,6 +185,12 @@ pe.command.set.invalidmeta=Error: The meta value "%s" is not valid!
 pe.command.set.success=Set EMC value for %s to %s!
 pe.command.set.usage=/projecte setEMC [unlocalized | oredict name] [meta] [EMC value], /projecte setEMC [EMC value] (for held item)
 
+pe.command.showbag.nocolor=No such color %s
+pe.command.showbag.notplayer=Cannot show bag contents to a non-player
+pe.command.showbag.offline.uuid=Malformed UUID
+pe.command.showbag.offline.notfound=UUID %s not found in playerdata/
+pe.command.showbag.usage=/projecte showBag <color> <player selector>
+
 pe.darkpick.mode1=Standard
 pe.darkpick.mode2=3x Tallshot
 pe.darkpick.mode3=3x Wideshot
@@ -207,6 +213,9 @@ pe.emc.rate=EMC/s
 pe.emc.stackemc_tooltip_prefix=Stack EMC:
 pe.emc.storedemc_tooltip=Stored EMC:
 pe.emc.too_much=WAY TOO MUCH
+pe.emc.postfix.0=Trillion
+pe.emc.postfix.1=Quadrillion
+pe.emc.postfix.2=Quintillion
 pe.emc.has_knowledge=Transmutable
 
 pe.evertide.tooltip1=Press %s to fire a water projectile
@@ -286,6 +295,13 @@ pe.philstone.mode2=Panel
 pe.philstone.mode3=Line
 pe.philstone.tooltip1=Press %s to open a crafting grid
 
+pe.pe_mercurial_eye.mode1=Creation
+pe.pe_mercurial_eye.mode2=Extension
+pe.pe_mercurial_eye.mode3=Extension-Classic
+pe.pe_mercurial_eye.mode4=Transmutation
+pe.pe_mercurial_eye.mode5=Transmutation-Classic
+pe.pe_mercurial_eye.mode6=Pillar
+
 pe.redpick.mode1=Standard
 pe.redpick.mode2=3x Tallshot
 pe.redpick.mode3=3x Wideshot
@@ -361,7 +377,9 @@ pe.zero.pedestal3=Activates every %s
 pe.debug.metainvalid.name=Invalid metadata set
 
 pe.nei.worldtransmute=World Transmutation
+pe.nei.worldtransmute.description=Click in world, shift click for second output
 pe.nei.philo=Philosopher's Stone Smelting
+pe.nei.collector=Collector Fuel Upgrades
 
 pe.manual.index=Index
 pe.manual.index_button=ToC

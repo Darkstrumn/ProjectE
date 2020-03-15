@@ -98,7 +98,7 @@ public class PhilosophersStone extends ItemMode implements IProjectileShooter, I
 		World world = player.getEntityWorld();
 		world.playSound(null, player.posX, player.posY, player.posZ, PESounds.TRANSMUTE, SoundCategory.PLAYERS, 1, 1);
 		EntityMobRandomizer ent = new EntityMobRandomizer(world, player);
-		ent.setHeadingFromThrower(player, player.rotationPitch, player.rotationYaw, 0, 1.5F, 1);
+		ent.shoot(player, player.rotationPitch, player.rotationYaw, 0, 1.5F, 1);
 		world.spawnEntity(ent);
 		return true;
 	}
@@ -118,6 +118,7 @@ public class PhilosophersStone extends ItemMode implements IProjectileShooter, I
 	@SideOnly(Side.CLIENT)
 	public void addInformation(ItemStack stack, World world, List<String> list, ITooltipFlag flags)
 	{
+		super.addInformation(stack, world, list, flags);
 		list.add(I18n.format("pe.philstone.tooltip1", ClientKeyHelper.getKeyName(PEKeybind.EXTRA_FUNCTION)));
 	}
 

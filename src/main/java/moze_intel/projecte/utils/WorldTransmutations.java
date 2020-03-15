@@ -1,6 +1,5 @@
 package moze_intel.projecte.utils;
 
-import com.google.common.collect.Lists;
 import net.minecraft.block.*;
 import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.state.IBlockState;
@@ -44,14 +43,14 @@ public final class WorldTransmutations
 			if (s.getValue(BlockOldLog.VARIANT) == BlockPlanks.EnumType.OAK)
 			{
 				// Oak must loop backward to dark oak
-				register(s, s.cycleProperty(BlockOldLog.VARIANT), 
+				register(s, s.cycleProperty(BlockOldLog.VARIANT),
 						Blocks.LOG2.getDefaultState()
 								.withProperty(BlockNewLog.VARIANT, BlockPlanks.EnumType.DARK_OAK)
 								.withProperty(BlockNewLog.LOG_AXIS, s.getValue(BlockOldLog.LOG_AXIS)));
 			} else if (s.getValue(BlockOldLog.VARIANT) == BlockPlanks.EnumType.JUNGLE)
 			{
 				// Jungle must loop forward to acacia
-				register(s, 
+				register(s,
 						Blocks.LOG2.getDefaultState()
 								.withProperty(BlockNewLog.VARIANT, BlockPlanks.EnumType.ACACIA)
 								.withProperty(BlockNewLog.LOG_AXIS, s.getValue(BlockOldLog.LOG_AXIS)),

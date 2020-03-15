@@ -1,8 +1,6 @@
 package moze_intel.projecte.utils;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import moze_intel.projecte.PECore;
 import moze_intel.projecte.config.ProjectEConfig;
 import net.minecraft.block.*;
@@ -12,28 +10,17 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.IProjectile;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.monster.EntityBlaze;
-import net.minecraft.entity.monster.EntityCreeper;
-import net.minecraft.entity.monster.EntityEnderman;
-import net.minecraft.entity.monster.EntityEndermite;
-import net.minecraft.entity.monster.EntityGhast;
-import net.minecraft.entity.monster.EntityPigZombie;
-import net.minecraft.entity.monster.EntitySilverfish;
-import net.minecraft.entity.monster.EntitySkeleton;
-import net.minecraft.entity.monster.EntitySlime;
-import net.minecraft.entity.monster.EntitySpider;
-import net.minecraft.entity.monster.EntityStray;
-import net.minecraft.entity.monster.EntityWitch;
-import net.minecraft.entity.monster.EntityWitherSkeleton;
-import net.minecraft.entity.monster.EntityZombie;
-import net.minecraft.entity.monster.EntityZombieVillager;
-import net.minecraft.entity.monster.IMob;
+import net.minecraft.entity.monster.*;
 import net.minecraft.entity.passive.EntityBat;
 import net.minecraft.entity.passive.EntityChicken;
 import net.minecraft.entity.passive.EntityCow;
+import net.minecraft.entity.passive.EntityDonkey;
 import net.minecraft.entity.passive.EntityHorse;
+import net.minecraft.entity.passive.EntityLlama;
 import net.minecraft.entity.passive.EntityMooshroom;
+import net.minecraft.entity.passive.EntityMule;
 import net.minecraft.entity.passive.EntityOcelot;
+import net.minecraft.entity.passive.EntityParrot;
 import net.minecraft.entity.passive.EntityPig;
 import net.minecraft.entity.passive.EntityRabbit;
 import net.minecraft.entity.passive.EntitySheep;
@@ -47,9 +34,6 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Enchantments;
-import net.minecraft.init.Items;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.EnumDyeColor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -61,10 +45,8 @@ import net.minecraftforge.common.IPlantable;
 import net.minecraftforge.common.IShearable;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.ExplosionEvent;
-import net.minecraftforge.fml.common.registry.VillagerRegistry;
 import net.minecraftforge.items.IItemHandler;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -79,22 +61,23 @@ import java.util.Set;
  */
 public final class WorldHelper
 {
-	@SuppressWarnings("unchecked")
-	private static final ImmutableList<Class<? extends EntityLiving>> peacefuls = ImmutableList.of(
+	private static final List<Class<? extends EntityLiving>> peacefuls = Lists.newArrayList(
 			EntitySheep.class, EntityPig.class, EntityCow.class,
 			EntityMooshroom.class, EntityChicken.class, EntityBat.class,
 			EntityVillager.class, EntitySquid.class, EntityOcelot.class,
-			EntityWolf.class, EntityHorse.class, EntityRabbit.class
+			EntityWolf.class, EntityHorse.class, EntityRabbit.class,
+			EntityDonkey.class, EntityMule.class, EntityPolarBear.class,
+			EntityLlama.class, EntityParrot.class
 	);
 
-	@SuppressWarnings("unchecked")
-	private static final ImmutableList<Class<? extends EntityLiving>> mobs = ImmutableList.of(
+	private static final List<Class<? extends EntityLiving>> mobs = Lists.newArrayList(
 			EntityZombie.class, EntitySkeleton.class, EntityCreeper.class,
 			EntitySpider.class, EntityEnderman.class, EntitySilverfish.class,
 			EntityPigZombie.class, EntityGhast.class, EntityBlaze.class,
 			EntitySlime.class, EntityWitch.class, EntityRabbit.class, EntityEndermite.class,
 			EntityStray.class, EntityWitherSkeleton.class, EntitySkeletonHorse.class, EntityZombieHorse.class,
-			EntityZombieVillager.class
+			EntityZombieVillager.class, EntityHusk.class, EntityGuardian.class,
+			EntityEvoker.class, EntityVex.class, EntityVindicator.class, EntityShulker.class
 	);
 
 	private static final Set<Class<? extends Entity>> interdictionBlacklist = new HashSet<>();
@@ -121,6 +104,46 @@ public final class WorldHelper
 		return false;
 	}
 
+	public static boolean addPeaceful(Class<? extends EntityLiving> clazz)
+	{
+		if (!peacefuls.contains(clazz))
+		{
+			peacefuls.add(clazz);
+			return true;
+		}
+		return false;
+	}
+
+	public static boolean removePeaceful(Class<? extends EntityLiving> clazz)
+	{
+		return peacefuls.remove(clazz);
+	}
+
+	public static void clearPeacefuls()
+	{
+		peacefuls.clear();
+	}
+
+	public static boolean addMob(Class<? extends EntityLiving> clazz)
+	{
+		if (!mobs.contains(clazz))
+		{
+			mobs.add(clazz);
+			return true;
+		}
+		return false;
+	}
+
+	public static boolean removeMob(Class<? extends EntityLiving> clazz)
+	{
+		return mobs.remove(clazz);
+	}
+
+	public static void clearMobs()
+	{
+		mobs.clear();
+	}
+
 	public static void createLootDrop(List<ItemStack> drops, World world, BlockPos pos)
 	{
 		createLootDrop(drops, world, pos.getX(), pos.getY(), pos.getZ());
@@ -132,7 +155,9 @@ public final class WorldHelper
 
 		for (ItemStack drop : drops)
 		{
-			spawnEntityItem(world, drop, x, y, z);
+			EntityItem ent = new EntityItem(world, x, y, z);
+			ent.setItem(drop);
+			world.spawnEntity(ent);
 		}
 	}
 
@@ -158,12 +183,12 @@ public final class WorldHelper
 		{
 			ItemStack stack = inv.getStackInSlot(i);
 
-			if (stack.isEmpty())
+			if (!stack.isEmpty())
 			{
-				continue;
+				EntityItem ent = new EntityItem(world, pos.getX(), pos.getY(), pos.getZ());
+				ent.setItem(stack);
+				world.spawnEntity(ent);
 			}
-
-			spawnEntityItem(world, stack, pos);
 		}
 	}
 
@@ -413,7 +438,7 @@ public final class WorldHelper
 				}
 				else if (world.rand.nextInt(chance) == 0)
 				{
-					if (ProjectEConfig.items.harvBandGrass || !crop.getUnlocalizedName().toLowerCase(Locale.ROOT).contains("grass"))
+					if (ProjectEConfig.items.harvBandGrass || !crop.getTranslationKey().toLowerCase(Locale.ROOT).contains("grass"))
 					{
 						growable.grow(world, world.rand, currentPos, state);
 					}
@@ -435,7 +460,7 @@ public final class WorldHelper
 				{
 					if (crop instanceof BlockFlower)
 					{
-						if (player == null || PlayerHelper.hasBreakPermission(((EntityPlayerMP) player), pos))
+						if (player == null || PlayerHelper.hasBreakPermission(((EntityPlayerMP) player), currentPos))
 						{
 							world.destroyBlock(currentPos, true);
 						}
@@ -565,22 +590,5 @@ public final class WorldHelper
 				}
 			}
 		}
-	}
-
-	public static void spawnEntityItem(World world, ItemStack stack, BlockPos pos)
-	{
-		spawnEntityItem(world, stack, pos.getX(), pos.getY(), pos.getZ());
-	}
-
-	public static void spawnEntityItem(World world, ItemStack stack, double x, double y, double z)
-	{
-		float f = world.rand.nextFloat() * 0.8F + 0.1F;
-		float f1 = world.rand.nextFloat() * 0.8F + 0.1F;
-		float f2 = world.rand.nextFloat() * 0.8F + 0.1F;
-		EntityItem entityitem = new EntityItem(world, x + f, y + f1, z + f2, stack.copy());
-		entityitem.motionX = world.rand.nextGaussian() * 0.05;
-		entityitem.motionY = world.rand.nextGaussian() * 0.05 + 0.2;
-		entityitem.motionZ = world.rand.nextGaussian() * 0.05;
-		world.spawnEntity(entityitem);
 	}
 }

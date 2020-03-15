@@ -7,14 +7,18 @@ import mezz.jei.api.ingredients.IIngredients;
 import mezz.jei.api.recipe.IRecipeCategory;
 import mezz.jei.api.recipe.IRecipeWrapper;
 import moze_intel.projecte.PECore;
+import moze_intel.projecte.utils.ItemHelper;
+import moze_intel.projecte.utils.WorldTransmutations;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -23,12 +27,14 @@ public class WorldTransmuteRecipeCategory implements IRecipeCategory
     public static final String UID = "pe.worldtransmute";
     private final IDrawable background;
     private final IDrawable arrow;
+    private final IDrawable icon;
     private final String localizedName;
 
     public WorldTransmuteRecipeCategory(IGuiHelper guiHelper)
     {
         background = guiHelper.createBlankDrawable(175, 48);
-        arrow = guiHelper.createDrawable(new ResourceLocation(PECore.MODID, "textures/gui/arrow.png"), 0, 0, 32, 32);
+        arrow = guiHelper.createDrawable(new ResourceLocation(PECore.MODID, "textures/gui/arrow.png"), 0, 0, 22, 15, 32, 32);
+        icon = guiHelper.createDrawable(new ResourceLocation(PECore.MODID, "textures/items/philosophers_stone.png"), 0, 0, 16, 16, 16, 16);
         localizedName = I18n.format("pe.nei.worldtransmute");
     }
 
@@ -63,13 +69,13 @@ public class WorldTransmuteRecipeCategory implements IRecipeCategory
     @Override
     public IDrawable getIcon()
     {
-        return null;
+        return icon;
     }
 
     @Override
     public void drawExtras(@Nonnull Minecraft minecraft)
     {
-        arrow.draw(minecraft, -30, 0);
+        arrow.draw(minecraft, 75, 18);
     }
 
     @Override
@@ -120,5 +126,37 @@ public class WorldTransmuteRecipeCategory implements IRecipeCategory
     @Override
     public List<String> getTooltipStrings(int mouseX, int mouseY) {
         return Collections.emptyList();
+    }
+
+    public static List<WorldTransmuteEntry> getAllTransmutations()
+    {
+        List<WorldTransmutations.Entry> allWorldTransmutations = WorldTransmutations.getWorldTransmutations();
+        //All the ones that have a block state that can be rendered in JEI.
+        //For example only render one pumpkin to melon transmutation
+        List<WorldTransmuteEntry> visible = new ArrayList<>();
+        allWorldTransmutations.forEach(entry -> {
+            WorldTransmuteEntry e = new WorldTransmuteEntry(entry);
+            if (e.isRenderable())
+            {
+                boolean alreadyHas;
+                FluidStack inputFluid = e.getInputFluid();
+                if (inputFluid != null)
+                {
+                    Fluid fluid = inputFluid.getFluid();
+                    alreadyHas = visible.stream().map(WorldTransmuteEntry::getInputFluid).anyMatch(otherInputFluid -> otherInputFluid != null && fluid == otherInputFluid.getFluid());
+                }
+                else
+                {
+                    ItemStack inputItem = e.getInputItem();
+                    alreadyHas = visible.stream().anyMatch(otherEntry -> ItemHelper.basicAreStacksEqual(inputItem, otherEntry.getInputItem()));
+                }
+                if (!alreadyHas)
+                {
+                    //Only add items that we haven't already had.
+                    visible.add(e);
+                }
+            }
+        });
+        return visible;
     }
 }

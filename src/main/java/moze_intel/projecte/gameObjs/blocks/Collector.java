@@ -30,7 +30,7 @@ public class Collector extends BlockDirection
 	public Collector(int tier) 
 	{
 		super(Material.GLASS);
-		this.setUnlocalizedName("pe_collector_MK" + tier);
+		this.setTranslationKey("pe_collector_MK" + tier);
 		this.setLightLevel(Constants.COLLECTOR_LIGHT_VALS[tier - 1]);
 		this.setHardness(0.3f);
 		this.tier = tier;
@@ -95,13 +95,13 @@ public class Collector extends BlockDirection
 			if (charging.getItem() instanceof IItemEmc)
 			{
 				IItemEmc itemEmc = ((IItemEmc) charging.getItem());
-				double max = itemEmc.getMaximumEmc(charging);
-				double current = itemEmc.getStoredEmc(charging);
+				long max = itemEmc.getMaximumEmc(charging);
+				long current = itemEmc.getStoredEmc(charging);
 				return MathUtils.scaleToRedstone(current, max);
 			} else
 			{
-				double needed = tile.getEmcToNextGoal();
-				double current = tile.getStoredEmc();
+				long needed = tile.getEmcToNextGoal();
+				long current = tile.getStoredEmc();
 				return MathUtils.scaleToRedstone(current, needed);
 			}
 		} else

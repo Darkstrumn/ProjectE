@@ -40,7 +40,7 @@ public class DarkSword extends PEToolBase implements IExtraFunction
 	}
 
 	@Override
-	public float getStrVsBlock(ItemStack stack, IBlockState state)
+	public float getDestroySpeed(ItemStack stack, IBlockState state)
 	{
 		if (state.getBlock() == Blocks.WEB)
 		{
@@ -83,7 +83,7 @@ public class DarkSword extends PEToolBase implements IExtraFunction
 			return super.getAttributeModifiers(slot, stack);
 		}
 
-		byte charge = getCharge(stack);
+		int charge = getCharge(stack);
 		float damage = (this instanceof RedSword ? REDSWORD_BASE_ATTACK : DARKSWORD_BASE_ATTACK) + charge;
 
 		Multimap<String, AttributeModifier> multimap = super.getAttributeModifiers(slot, stack);

@@ -10,6 +10,8 @@ import moze_intel.projecte.utils.MathUtils;
 import moze_intel.projecte.utils.PlayerHelper;
 import moze_intel.projecte.utils.WorldHelper;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockRedstoneOre;
+import net.minecraft.block.BlockShulkerBox;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.enchantment.EnchantmentHelper;
@@ -81,7 +83,7 @@ public abstract class PEToolBase extends ItemMode
 	}
 
 	@Override
-	public float getStrVsBlock(ItemStack stack, IBlockState state)
+	public float getDestroySpeed(ItemStack stack, IBlockState state)
 	{
 		if ("dm_tools".equals(this.peToolMaterial))
 		{
@@ -103,9 +105,9 @@ public abstract class PEToolBase extends ItemMode
 	/**
 	 * Clears the given OD name in an AOE. Charge affects the AOE. Optional per-block EMC cost.
 	 */
-	protected void clearOdAOE(World world, ItemStack stack, EntityPlayer player, String odName, int emcCost, EnumHand hand)
+	protected void clearOdAOE(World world, ItemStack stack, EntityPlayer player, String odName, long emcCost, EnumHand hand)
 	{
-		byte charge = getCharge(stack);
+		int charge = getCharge(stack);
 		if (charge == 0 || world.isRemote || ProjectEConfig.items.disableAllRadiusMining)
 		{
 			return;
@@ -169,9 +171,9 @@ public abstract class PEToolBase extends ItemMode
 	/**
 	 * Tills in an AOE. Charge affects the AOE. Optional per-block EMC cost.
 	 */
-	protected void tillAOE(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing sidehit, int emcCost)
+	protected void tillAOE(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing sidehit, long emcCost)
 	{
-		byte charge = this.getCharge(stack);
+		int charge = this.getCharge(stack);
 		boolean hasAction = false;
 		boolean hasSoundPlayed = false;
 
@@ -291,10 +293,12 @@ public abstract class PEToolBase extends ItemMode
 
 			if (b != Blocks.AIR
 					&& state.getBlockHardness(world, digPos) != -1
-					&& PlayerHelper.hasBreakPermission(((EntityPlayerMP) player), digPos)
-					&& (canHarvestBlock(state, stack) || ForgeHooks.canToolHarvestBlock(world, digPos, stack)))
+					&& (canHarvestBlock(state, stack) || ForgeHooks.canToolHarvestBlock(world, digPos, stack))
+					&& PlayerHelper.hasBreakPermission(((EntityPlayerMP) player), digPos))
 			{
-				drops.addAll(WorldHelper.getBlockDrops(world, player, state, stack, digPos));
+				// shulker boxes are implemented stupidly and drop whenever we set it to air, so don't dupe
+				if (!(b instanceof BlockShulkerBox))
+					drops.addAll(WorldHelper.getBlockDrops(world, player, state, stack, digPos));
 				world.setBlockToAir(digPos);
 			}
 		}
@@ -305,7 +309,7 @@ public abstract class PEToolBase extends ItemMode
 	/**
 	 * Carves in an AOE. Charge affects the breadth and/or depth of the AOE. Optional per-block EMC cost.
 	 */
-	protected void digAOE(ItemStack stack, World world, EntityPlayer player, boolean affectDepth, int emcCost, EnumHand hand)
+	protected void digAOE(ItemStack stack, World world, EntityPlayer player, boolean affectDepth, long emcCost, EnumHand hand)
 	{
 		if (world.isRemote || this.getCharge(stack) == 0 || ProjectEConfig.items.disableAllRadiusMining)
 		{
@@ -335,7 +339,9 @@ public abstract class PEToolBase extends ItemMode
 					&& consumeFuel(player, stack, emcCost, true)
 					)
 			{
-				drops.addAll(WorldHelper.getBlockDrops(world, player, state, stack, pos));
+				// shulker boxes are implemented stupidly and drop whenever we set it to air, so don't dupe
+				if (!(b instanceof BlockShulkerBox))
+					drops.addAll(WorldHelper.getBlockDrops(world, player, state, stack, pos));
 				world.setBlockToAir(pos);
 			}
 		}
@@ -360,7 +366,7 @@ public abstract class PEToolBase extends ItemMode
 		}
 
 		DamageSource dmg = DamageSource.causePlayerDamage((EntityPlayer) damager);
-		byte charge = this.getCharge(stack);
+		int charge = this.getCharge(stack);
 		float totalDmg = baseDmg;
 
 		if (charge > 0)
@@ -375,14 +381,14 @@ public abstract class PEToolBase extends ItemMode
 	/**
 	 * Attacks in an AOE. Charge affects AOE, not damage (intentional). Optional per-entity EMC cost.
 	 */
-	protected void attackAOE(ItemStack stack, EntityPlayer player, boolean slayAll, float damage, int emcCost, EnumHand hand)
+	protected void attackAOE(ItemStack stack, EntityPlayer player, boolean slayAll, float damage, long emcCost, EnumHand hand)
 	{
 		if (player.getEntityWorld().isRemote)
 		{
 			return;
 		}
 
-		byte charge = getCharge(stack);
+		int charge = getCharge(stack);
 		float factor = 2.5F * charge;
 		AxisAlignedBB aabb = player.getEntityBoundingBox().grow(factor);
 		List<Entity> toAttack = player.getEntityWorld().getEntitiesWithinAABBExcludingEntity(player, aabb);
@@ -436,12 +442,12 @@ public abstract class PEToolBase extends ItemMode
 	/**
 	 * Shears entities in an AOE. Charge affects AOE. Optional per-entity EMC cost.
 	 */
-	protected void shearEntityAOE(ItemStack stack, EntityPlayer player, int emcCost, EnumHand hand)
+	protected void shearEntityAOE(ItemStack stack, EntityPlayer player, long emcCost, EnumHand hand)
 	{
 		World world = player.getEntityWorld();
 		if (!world.isRemote)
 		{
-			byte charge = this.getCharge(stack);
+			int charge = this.getCharge(stack);
 
 			int offset = ((int) Math.pow(2, 2 + charge));
 
@@ -501,6 +507,15 @@ public abstract class PEToolBase extends ItemMode
 		}
 	}
 
+	private static boolean isSameOre(IBlockState target, IBlockState world)
+	{
+		if (target.getBlock() instanceof BlockRedstoneOre)
+		{
+			return world.getBlock() instanceof BlockRedstoneOre;
+		}
+		return target == world;
+	}
+
 	/**
 	 * Scans and harvests an ore vein. This is called already knowing the mop is pointing at an ore or gravel.
 	 */
@@ -523,7 +538,7 @@ public abstract class PEToolBase extends ItemMode
 		for (BlockPos pos : WorldHelper.getPositionsFromBox(aabb))
 		{
 			IBlockState state = player.getEntityWorld().getBlockState(pos);
-			if (state == target)
+			if (isSameOre(target, state))
 			{
 				WorldHelper.harvestVein(player.getEntityWorld(), player, stack, pos, state, drops, 0);
 			}
